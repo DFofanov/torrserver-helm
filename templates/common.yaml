@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: torrsrv
+  labels:
+    name: torrserver
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: torrsrv-config-pv
+  labels:
+    type: local
+spec:
+  storageClassName: manual
+  capacity:
+    storage: "{{ .Values.ConfigSize }}"
+  persistentVolumeReclaimPolicy: Retain
+  accessModes:
+  - ReadWriteMany
+  hostPath:
+    path: "{{ .Values.HostConfigPath }}"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: torrsrv-config-pvc
+  namespace: torrserver
+spec:
+  storageClassName: manual
+  accessModes:
+  - ReadWriteMany
+  volumeName: torrsrv-config-pv
+  resources:
+    requests:
+      storage: "{{ .Values.ConfigSize }}"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: torrsrv
+  namespace: torrserver
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: torrsrv-app
+      labels:
+        name: torrsrv-app
+    spec:
+      volumes:
+        - name: torrsrv-config-storage
+          persistentVolumeClaim:
+            claimName: torrsrv-config-pvc
+      containers:
+        - name: torrsrv
+          image: 19780529/torrserver:1.1
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: TZ
+            value: Europe/Moscow
+          volumeMounts:
+          - name: torrsrv-config-storage
+            mountPath: "/torrserver/config"
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 0
+  selector:
+    matchLabels:
+      name: torrsrv-app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: torrsrv-service
+  namespace: torrserver
+spec:
+  selector:
+    name: torrsrv-app
+  ports:
+  - name: http
+    protocol: TCP
+    port: 8090
+    targetPort: 8090

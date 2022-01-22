@@ -1,0 +1,2 @@
+ConfigSize: "10Gi"
+HostConfigPath: "/storage/k8sSSD/torrserver"
